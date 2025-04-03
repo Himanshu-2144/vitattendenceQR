@@ -7,6 +7,7 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <style>
+        /* General Styling */
         * {
             margin: 0;
             padding: 0;
@@ -18,6 +19,7 @@
             background-color: #f4f4f4;
         }
 
+        /* Header */
         .header {
             background: linear-gradient(90deg, #004080, #007bff);
             color: white;
@@ -50,8 +52,35 @@
             margin-left: 10px;
         }
 
+        /* Sidebar */
+        .sidebar {
+            width: 60px;
+            background-color: #004080;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            height: calc(100% - 60px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+        }
+
+        .sidebar a {
+            margin: 15px 0;
+            text-decoration: none;
+            color: white;
+            font-size: 24px;
+        }
+
+        .sidebar a:hover {
+            color: #ffcc00;
+        }
+
+        /* Main Content */
         .container {
-            margin-top: 100px;
+            margin-left: 80px;
+            margin-top: 80px;
             padding: 20px;
             background: white;
             width: 50%;
@@ -91,6 +120,13 @@
             background-color: #007bff;
         }
 
+        @media (max-width: 768px) {
+            .container {
+                width: 80%;
+            }
+        }
+
+        /* QR Code Section */
         #qrCodeContainer {
             display: none;
             margin-top: 20px;
@@ -101,6 +137,7 @@
             height: 200px;
         }
 
+        /* QR Link */
         #qrLink {
             display: block;
             margin-top: 10px;
@@ -115,6 +152,14 @@
     </style>
 </head>
 <body>
+    <div id="g_id_onload"
+         data-client_id="YOUR_GOOGLE_CLIENT_ID"
+         data-login_uri="http://localhost:5000/auth"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin" data-type="standard"></div>
+
+    <!-- Header -->
     <div class="header">
         <div class="header-title">VIT Bhopal - Attendance System</div>
         <div class="user-profile">
@@ -123,6 +168,15 @@
         </div>
     </div>
 
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <a href="#">🏠</a>
+        <a href="#">📅</a>
+        <a href="#">📊</a>
+        <a href="#">⚙️</a>
+    </div>
+
+    <!-- Main Container -->
     <div class="container">
         <h1>Mark Your Attendance</h1>
         <div class="slot-buttons">
@@ -131,6 +185,7 @@
             <button onclick="generateQR('SlotC11')" class="button">Slot C11</button>
         </div>
 
+        <!-- QR Code Display -->
         <div id="qrCodeContainer">
             <h2>Scan the QR Code to Mark Attendance</h2>
             <img id="qrCode" src="" alt="QR Code">
@@ -141,19 +196,53 @@
     <script>
         function generateQR(slot) {
             console.log("Generating QR for:", slot);
+
             fetch(`/generate_qr?slot=${encodeURIComponent(slot)}`)
-                .then(response => response.blob())
+                .then(response => response.blob())  // Handle the response as a blob
                 .then(imageBlob => {
-                    const imageUrl = URL.createObjectURL(imageBlob);
-                    document.getElementById("qrCode").src = imageUrl;
-                    document.getElementById("qrLink").href = imageUrl;
-                    document.getElementById("qrCodeContainer").style.display = "block";
+                    const imageUrl = URL.createObjectURL(imageBlob); // Create URL from blob
+                    document.getElementById("qrCode").src = imageUrl; // Set the QR code source
+                    document.getElementById("qrLink").href = imageUrl; // Direct link to QR
+                    document.getElementById("qrCodeContainer").style.display = "block"; // Show QR code container
                 })
                 .catch(error => {
                     alert("Error generating QR: " + error.message);
                     console.error("QR Generation Error:", error);
                 });
         }
+
+        function handleCredentialResponse(response) {
+            console.log("Google Token Received: ", response.credential);
+
+            fetch('/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: response.credential })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Login Successful!");
+                    localStorage.setItem("userEmail", data.email);
+                    window.location.href = `/students?email=${data.email}`;
+                } else {
+                    alert("Authentication Failed: " + data.message);
+                }
+            })
+            .catch(err => console.error("Error:", err));
+        }
+
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: "YOUR_GOOGLE_CLIENT_ID",
+                callback: handleCredentialResponse
+            });
+
+            google.accounts.id.renderButton(
+                document.getElementById("g_id_signin"),
+                { theme: "outline", size: "large" }
+            );
+        };
     </script>
 </body>
 </html>
