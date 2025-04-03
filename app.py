@@ -6,7 +6,7 @@ from google.auth.transport import requests as google_requests
 from datetime import datetime
 from io import BytesIO
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(_name_, template_folder="templates")
 
 GOOGLE_CLIENT_ID = "187158612965-272dhjdv16323lfsqo7osi17dqhsc8sd.apps.googleusercontent.com"
 
@@ -131,8 +131,8 @@ def generate_qr():
     if not slot:
         return jsonify({"success": False, "message": "No slot provided"}), 400
 
-    # Use your Render URL instead of local IP
-    qr_data = f"https://vitattendanceqr.onrender.com/login?slot={slot}"
+    # Corrected URL format
+    qr_data = f"http://192.168.97.28:5000/login?slot={slot}"  # ✅ Now correctly points to the login route
 
     qr = qrcode.make(qr_data)
     img_io = BytesIO()
@@ -156,5 +156,5 @@ def get_students():
     conn.close()
     return jsonify({"students": students})
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     app.run(host='0.0.0.0', port=5000)
