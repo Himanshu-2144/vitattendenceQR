@@ -6,7 +6,8 @@ from google.auth.transport import requests as google_requests
 from datetime import datetime
 from io import BytesIO
 
-app = Flask(_name_, template_folder="templates")
+app = Flask(__name__, template_folder="templates")
+
 
 GOOGLE_CLIENT_ID = "187158612965-272dhjdv16323lfsqo7osi17dqhsc8sd.apps.googleusercontent.com"
 
