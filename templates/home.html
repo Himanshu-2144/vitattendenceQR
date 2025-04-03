@@ -185,31 +185,39 @@
             <button onclick="generateQR('SlotC11')" class="button">Slot C11</button>
         </div>
 
-        <!-- QR Code Display -->
-        <div id="qrCodeContainer">
-            <h2>Scan the QR Code to Mark Attendance</h2>
-            <img id="qrCode" src="" alt="QR Code">
-            <a id="qrLink" href="#" target="_blank">Click here if the QR code doesn't load</a>
-        </div>
-    </div>
+<!-- QR Code Display -->
+<div id="qrCodeContainer" style="display: none; text-align: center;">
+    <h2>Scan the QR Code to Mark Attendance</h2>
+    <img id="qrCode" src="" alt="QR Code" style="width: 200px; height: 200px;">
+    <br>
+    <a id="qrLink" href="#" target="_blank">Click here if the QR code doesn't load</a>
+</div>
+
 
     <script>
-        function generateQR(slot) {
-            console.log("Generating QR for:", slot);
+function generateQR(slot) {
+    console.log("🔄 Generating QR for slot:", slot);
 
-            fetch(`/generate_qr?slot=${encodeURIComponent(slot)}`)
-                .then(response => response.blob())  // Handle the response as a blob
-                .then(imageBlob => {
-                    const imageUrl = URL.createObjectURL(imageBlob); // Create URL from blob
-                    document.getElementById("qrCode").src = imageUrl; // Set the QR code source
-                    document.getElementById("qrLink").href = imageUrl; // Direct link to QR
-                    document.getElementById("qrCodeContainer").style.display = "block"; // Show QR code container
-                })
-                .catch(error => {
-                    alert("Error generating QR: " + error.message);
-                    console.error("QR Generation Error:", error);
-                });
-        }
+    fetch(`/generate_qr?slot=${encodeURIComponent(slot)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch QR code. Status: " + response.status);
+            }
+            return response.blob();
+        })
+        .then(imageBlob => {
+            const imageUrl = URL.createObjectURL(imageBlob);
+            document.getElementById("qrCode").src = imageUrl;
+            document.getElementById("qrLink").href = imageUrl;
+            document.getElementById("qrCodeContainer").style.display = "block";
+            console.log("✅ QR Code Generated Successfully:", imageUrl);
+        })
+        .catch(error => {
+            console.error("❌ QR Generation Error:", error);
+            alert("Error generating QR: " + error.message);
+        });
+}
+
 
         function handleCredentialResponse(response) {
             console.log("Google Token Received: ", response.credential);
