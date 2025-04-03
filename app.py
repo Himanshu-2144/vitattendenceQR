@@ -131,8 +131,8 @@ def generate_qr():
     if not slot:
         return jsonify({"success": False, "message": "No slot provided"}), 400
 
-    # Corrected URL format
-    qr_data = f"http://192.168.97.28:5000/login?slot={slot}"  # ✅ Now correctly points to the login route
+    # Use your Render URL instead of local IP
+    qr_data = f"https://vitattendanceqr.onrender.com/login?slot={slot}"
 
     qr = qrcode.make(qr_data)
     img_io = BytesIO()
