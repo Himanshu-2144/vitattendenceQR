@@ -8,7 +8,10 @@ from io import BytesIO
 
 app = Flask(__name__, template_folder="templates")
 
+# ✅ Replace with your actual Google Client ID
 GOOGLE_CLIENT_ID = "187158612965-272dhjdv16323lfsqo7osi17dqhsc8sd.apps.googleusercontent.com"
+# ✅ Replace with your Render-deployed URL
+BASE_URL = "https://your-app.onrender.com"  # <-- Change this!
 
 # ✅ Initialize Databases
 def init_databases():
@@ -18,7 +21,6 @@ def init_databases():
                     student_id TEXT PRIMARY KEY,
                     email TEXT UNIQUE)''')
     
-    # ✅ Sample Student Data (Only add if database is empty)
     students = [
         ("23BCY10304", "bcy10304@vitbhopal.ac.in"),
         ("23BCY10456", "bcy10456@vitbhopal.ac.in"),
@@ -36,6 +38,7 @@ def init_databases():
     c.execute('''CREATE TABLE IF NOT EXISTS attendance (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     student_email TEXT,
+                    slot TEXT,
                     timestamp TEXT)''')
     conn.commit()
     conn.close()
@@ -67,61 +70,9 @@ def auth():
         if not student:
             return jsonify({"success": False, "message": "Unauthorized Student"}), 403
 
-        # ✅ Mark Attendance
-        conn = sqlite3.connect("attendance.db")
-        c = conn.cursor()
-        c.execute("INSERT INTO attendance (student_email, timestamp) VALUES (?, ?)", 
-                  (user_email, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-        conn.commit()
-        conn.close()
-
         return jsonify({"success": True, "email": user_email})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
-    
-# ✅ Check if Student Exists & Has Already Marked Attendance
-@app.route("/check_student", methods=["POST"])
-def check_student():
-    data = request.json
-    student_email = data.get("email")
-    slot = data.get("slot")
-
-    if not student_email or not slot:
-        return jsonify({"success": False, "message": "Missing email or slot"}), 400
-
-    # ✅ Check if student exists in students.db
-    conn = sqlite3.connect("students.db")
-    c = conn.cursor()
-    c.execute("SELECT * FROM students WHERE email=?", (student_email,))
-    student = c.fetchone()
-    conn.close()
-
-    if not student:
-        return jsonify({"success": False, "message": "Email not found. Unauthorized access!"}), 403
-
-    # ✅ Check if attendance is already marked for this slot
-    conn = sqlite3.connect("attendance.db")
-    c = conn.cursor()
-    c.execute("SELECT * FROM attendance WHERE student_email=? AND slot=?", (student_email, slot))
-    existing_entry = c.fetchone()
-
-    if existing_entry:
-        conn.close()
-        return jsonify({"success": False, "message": "Attendance already marked for this slot!"}), 403
-
-    # ✅ Mark Attendance
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    c.execute("INSERT INTO attendance (student_email, slot, timestamp) VALUES (?, ?, ?)",
-              (student_email, slot, timestamp))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"success": True, "message": "Attendance marked successfully!"})
-
-@app.route("/login")
-def login():
-    slot = request.args.get("slot")
-    return render_template("login.html", slot=slot)  # Pass slot to template if needed
 
 # ✅ Generate QR Code Based on Slot
 @app.route("/generate_qr", methods=["GET"])
@@ -131,8 +82,7 @@ def generate_qr():
     if not slot:
         return jsonify({"success": False, "message": "No slot provided"}), 400
 
-    # Corrected URL format
-    qr_data = f"http://192.168.97.28:5000/login?slot={slot}"  # ✅ Now correctly points to the login route
+    qr_data = f"{BASE_URL}/login?slot={slot}"
 
     qr = qrcode.make(qr_data)
     img_io = BytesIO()
@@ -141,20 +91,32 @@ def generate_qr():
 
     return send_file(img_io, mimetype="image/png")
 
-# ✅ Render Student Database Page
-@app.route("/students")
-def students():
-    return render_template("students.html")
+# ✅ Mark Attendance
+@app.route("/mark_attendance", methods=["POST"])
+def mark_attendance():
+    data = request.json
+    student_email = data.get("email")
+    slot = data.get("slot")
 
-# ✅ Get Student List (For Student Page)
-@app.route("/get_students", methods=["GET"])
-def get_students():
-    conn = sqlite3.connect("students.db")
+    if not student_email or not slot:
+        return jsonify({"success": False, "message": "Missing email or slot"}), 400
+
+    conn = sqlite3.connect("attendance.db")
     c = conn.cursor()
-    c.execute("SELECT email FROM students")
-    students = [row[0] for row in c.fetchall()]
+    c.execute("SELECT * FROM attendance WHERE student_email=? AND slot=?", (student_email, slot))
+    existing_entry = c.fetchone()
+
+    if existing_entry:
+        conn.close()
+        return jsonify({"success": False, "message": "Attendance already marked for this slot!"}), 403
+
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    c.execute("INSERT INTO attendance (student_email, slot, timestamp) VALUES (?, ?, ?)",
+              (student_email, slot, timestamp))
+    conn.commit()
     conn.close()
-    return jsonify({"students": students})
+
+    return jsonify({"success": True, "message": "Attendance marked successfully!"})
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
