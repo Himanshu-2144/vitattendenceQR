@@ -36,7 +36,6 @@ def init_databases():
     c.execute('''CREATE TABLE IF NOT EXISTS attendance (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     student_email TEXT,
-                    slot TEXT,
                     timestamp TEXT)''')
     conn.commit()
     conn.close()
@@ -68,13 +67,21 @@ def auth():
         if not student:
             return jsonify({"success": False, "message": "Unauthorized Student"}), 403
 
+        # ✅ Mark Attendance
+        conn = sqlite3.connect("attendance.db")
+        c = conn.cursor()
+        c.execute("INSERT INTO attendance (student_email, timestamp) VALUES (?, ?)", 
+                  (user_email, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        conn.commit()
+        conn.close()
+
         return jsonify({"success": True, "email": user_email})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
     
-# ✅ Mark Attendance
-@app.route("/mark_attendance", methods=["POST"])
-def mark_attendance():
+# ✅ Check if Student Exists & Has Already Marked Attendance
+@app.route("/check_student", methods=["POST"])
+def check_student():
     data = request.json
     student_email = data.get("email")
     slot = data.get("slot")
@@ -111,7 +118,12 @@ def mark_attendance():
 
     return jsonify({"success": True, "message": "Attendance marked successfully!"})
 
-# ✅ Generate QR Code
+@app.route("/login")
+def login():
+    slot = request.args.get("slot")
+    return render_template("login.html", slot=slot)  # Pass slot to template if needed
+
+# ✅ Generate QR Code Based on Slot
 @app.route("/generate_qr", methods=["GET"])
 def generate_qr():
     slot = request.args.get("slot")
@@ -119,8 +131,8 @@ def generate_qr():
     if not slot:
         return jsonify({"success": False, "message": "No slot provided"}), 400
 
-    # Use Render's hosted URL
-    qr_data = f"https://your-render-app-url.com/login?slot={slot}"
+    # Corrected URL format
+    qr_data = f"http://192.168.97.28:5000/login?slot={slot}"  # ✅ Now correctly points to the login route
 
     qr = qrcode.make(qr_data)
     img_io = BytesIO()
@@ -134,7 +146,7 @@ def generate_qr():
 def students():
     return render_template("students.html")
 
-# ✅ Get Student List
+# ✅ Get Student List (For Student Page)
 @app.route("/get_students", methods=["GET"])
 def get_students():
     conn = sqlite3.connect("students.db")
